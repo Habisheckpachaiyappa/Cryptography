@@ -1,0 +1,102 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+// Function prototypes
+int gcd(int a, int b);
+int modular_inverse(int a, int m);
+void affine_encrypt(const char *plaintext, char *ciphertext, int a, int b);
+void affine_decrypt(const char *ciphertext, char *plaintext, int a, int b);
+
+int main() {
+    char plaintext[256];
+    char ciphertext[256];
+    char decrypted[256];
+    int a, b;
+
+    // Input affine cipher parameters
+    printf("Enter values for a and b (ensure gcd(a, 26) = 1): ");
+    scanf("%d %d", &a, &b);
+
+    // Validate 'a'
+    if (gcd(a, 26) != 1) {
+        printf("Error: a must be coprime with 26.\n");
+        return 1;
+    }
+
+    // Clear input buffer
+    getchar();
+
+    // Input plaintext
+    printf("Enter the plaintext: ");
+    fgets(plaintext, sizeof(plaintext), stdin);
+    plaintext[strcspn(plaintext, "\n")] = '\0'; // Remove newline character
+
+    // Encrypt plaintext
+    affine_encrypt(plaintext, ciphertext, a, b);
+
+    // Decrypt ciphertext
+    affine_decrypt(ciphertext, decrypted, a, b);
+
+    // Output results
+    printf("\nPlaintext: %s", plaintext);
+    printf("\nCiphertext: %s", ciphertext);
+    printf("\nDecrypted Text: %s\n", decrypted);
+
+    return 0;
+}
+
+// Function to calculate gcd
+int gcd(int a, int b) {
+    return b == 0 ? a : gcd(b, a % b);
+}
+
+// Function to calculate modular inverse of a mod m
+int modular_inverse(int a, int m) {
+    for (int i = 1; i < m; i++) {
+        if ((a * i) % m == 1) {
+            return i;
+        }
+    }
+    return -1; // No modular inverse found
+}
+
+// Function to encrypt plaintext using affine cipher
+void affine_encrypt(const char *plaintext, char *ciphertext, int a, int b) {
+    for (int i = 0; plaintext[i] != '\0'; i++) {
+        if (plaintext[i] >= 'A' && plaintext[i] <= 'Z') {
+            // Uppercase letters
+            ciphertext[i] = ((a * (plaintext[i] - 'A') + b) % 26) + 'A';
+        } else if (plaintext[i] >= 'a' && plaintext[i] <= 'z') {
+            // Lowercase letters
+            ciphertext[i] = ((a * (plaintext[i] - 'a') + b) % 26) + 'a';
+        } else {
+            // Non-alphabetic characters remain unchanged
+            ciphertext[i] = plaintext[i];
+        }
+    }
+    ciphertext[strlen(plaintext)] = '\0'; // Null-terminate ciphertext
+}
+
+// Function to decrypt ciphertext using affine cipher
+void affine_decrypt(const char *ciphertext, char *plaintext, int a, int b) {
+    int a_inv = modular_inverse(a, 26);
+    if (a_inv == -1) {
+        printf("Error: No modular inverse for a = %d.\n", a);
+        exit(1);
+    }
+
+    for (int i = 0; ciphertext[i] != '\0'; i++) {
+        if (ciphertext[i] >= 'A' && ciphertext[i] <= 'Z') {
+            // Uppercase letters
+            plaintext[i] = (a_inv * ((ciphertext[i] - 'A' - b + 26) % 26)) % 26 + 'A';
+        } else if (ciphertext[i] >= 'a' && ciphertext[i] <= 'z') {
+            // Lowercase letters
+            plaintext[i] = (a_inv * ((ciphertext[i] - 'a' - b + 26) % 26)) % 26 + 'a';
+        } else {
+            // Non-alphabetic characters remain unchanged
+            plaintext[i] = ciphertext[i];
+        }
+    }
+    plaintext[strlen(ciphertext)] = '\0'; // Null-terminate plaintext
+}

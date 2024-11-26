@@ -1,0 +1,55 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
+
+#define LANES 25          // Total lanes in the state matrix
+#define LANE_SIZE 64      // Each lane is 64 bits
+#define CAPACITY_LANES 8  // First 8 lanes are the capacity portion
+#define RATE_LANES (LANES - CAPACITY_LANES) // Remaining lanes are the rate portion
+
+// Function to generate a random 64-bit value with at least one nonzero bit
+unsigned long long randomNonZeroLane() {
+    return ((unsigned long long)rand() << 32 | rand()) | 1; // Ensure at least one nonzero bit
+}
+
+// Function to check if all capacity lanes are nonzero
+int areAllNonZero(unsigned long long state[]) {
+    for (int i = 0; i < CAPACITY_LANES; i++) {
+        if (state[i] == 0) {
+            return 0; // Found a zero lane
+        }
+    }
+    return 1; // All lanes are nonzero
+}
+
+int main() {
+    srand(time(0)); // Seed random number generator
+
+    unsigned long long state[LANES] = {0}; // Initialize all lanes to zero
+    unsigned long long messageBlock[RATE_LANES]; // Input message block (rate portion)
+
+    int iterations = 0;
+
+    // Main simulation loop
+    while (!areAllNonZero(state)) {
+        // Generate a new message block with random nonzero lanes
+        for (int i = 0; i < RATE_LANES; i++) {
+            messageBlock[i] = randomNonZeroLane();
+        }
+
+        // XOR the message block with the rate portion of the state
+        for (int i = 0; i < RATE_LANES; i++) {
+            state[CAPACITY_LANES + i] ^= messageBlock[i];
+        }
+
+        // Update capacity lanes based on XOR results (simplified)
+        for (int i = 0; i < CAPACITY_LANES; i++) {
+            state[i] ^= randomNonZeroLane();
+        }
+
+        iterations++;
+    }
+
+    printf("All capacity lanes became nonzero after %d iterations.\n", iterations);
+    return 0;
+}

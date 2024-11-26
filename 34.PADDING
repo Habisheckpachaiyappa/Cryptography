@@ -1,0 +1,112 @@
+#include <stdio.h>
+#include <stdint.h>
+#include <string.h>
+
+// Constants
+#define BLOCK_SIZE 8 // Example block size of 8 bytes
+
+// Function prototypes
+void ecbEncrypt(uint8_t *plaintext, uint8_t *ciphertext, uint8_t *key, int length);
+void cbcEncrypt(uint8_t *plaintext, uint8_t *ciphertext, uint8_t *key, uint8_t *iv, int length);
+void cfbEncrypt(uint8_t *plaintext, uint8_t *ciphertext, uint8_t *key, uint8_t *iv, int length);
+void padData(uint8_t *data, int *length);
+
+// Utility function for printing blocks
+void printBlock(uint8_t *block, int size);
+
+int main() {
+    uint8_t plaintext[64] = "This is a test message for ECB, CBC, and CFB modes.";
+    uint8_t key[BLOCK_SIZE] = {0x13, 0x34, 0x57, 0x79, 0x9b, 0xbc, 0xdf, 0xf1};
+    uint8_t iv[BLOCK_SIZE] = {0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef};
+    uint8_t ciphertext[128] = {0};
+    int length = strlen((char *)plaintext);
+
+    // Pad the plaintext
+    padData(plaintext, &length);
+
+    printf("Padded plaintext:\n");
+    printBlock(plaintext, length);
+
+    // Encrypt using ECB mode
+    ecbEncrypt(plaintext, ciphertext, key, length);
+    printf("\nCiphertext (ECB Mode):\n");
+    printBlock(ciphertext, length);
+
+    // Encrypt using CBC mode
+    cbcEncrypt(plaintext, ciphertext, key, iv, length);
+    printf("\nCiphertext (CBC Mode):\n");
+    printBlock(ciphertext, length);
+
+    // Encrypt using CFB mode
+    cfbEncrypt(plaintext, ciphertext, key, iv, length);
+    printf("\nCiphertext (CFB Mode):\n");
+    printBlock(ciphertext, length);
+
+    return 0;
+}
+
+// Padding function
+void padData(uint8_t *data, int *length) {
+    int padBytes = BLOCK_SIZE - (*length % BLOCK_SIZE);
+    for (int i = 0; i < padBytes; i++) {
+        if (i == 0)
+            data[*length + i] = 0x80; // Add 1 bit for padding
+        else
+            data[*length + i] = 0x00; // Add zero bits
+    }
+    *length += padBytes;
+}
+
+// ECB mode encryption (dummy implementation)
+void ecbEncrypt(uint8_t *plaintext, uint8_t *ciphertext, uint8_t *key, int length) {
+    for (int i = 0; i < length; i += BLOCK_SIZE) {
+        // Perform encryption for each block
+        for (int j = 0; j < BLOCK_SIZE; j++) {
+            ciphertext[i + j] = plaintext[i + j] ^ key[j]; // XOR as example
+        }
+    }
+}
+
+// CBC mode encryption (dummy implementation)
+void cbcEncrypt(uint8_t *plaintext, uint8_t *ciphertext, uint8_t *key, uint8_t *iv, int length) {
+    uint8_t temp[BLOCK_SIZE];
+    memcpy(temp, iv, BLOCK_SIZE);
+
+    for (int i = 0; i < length; i += BLOCK_SIZE) {
+        // XOR with previous ciphertext block or IV
+        for (int j = 0; j < BLOCK_SIZE; j++) {
+            temp[j] = plaintext[i + j] ^ temp[j];
+        }
+        // Encrypt the result
+        for (int j = 0; j < BLOCK_SIZE; j++) {
+            ciphertext[i + j] = temp[j] ^ key[j]; // XOR as example
+        }
+        memcpy(temp, &ciphertext[i], BLOCK_SIZE); // Update temp to current ciphertext
+    }
+}
+
+// CFB mode encryption (dummy implementation)
+void cfbEncrypt(uint8_t *plaintext, uint8_t *ciphertext, uint8_t *key, uint8_t *iv, int length) {
+    uint8_t temp[BLOCK_SIZE];
+    memcpy(temp, iv, BLOCK_SIZE);
+
+    for (int i = 0; i < length; i += BLOCK_SIZE) {
+        // Encrypt IV or previous ciphertext
+        for (int j = 0; j < BLOCK_SIZE; j++) {
+            temp[j] = temp[j] ^ key[j]; // XOR as example
+        }
+        // XOR with plaintext to produce ciphertext
+        for (int j = 0; j < BLOCK_SIZE; j++) {
+            ciphertext[i + j] = plaintext[i + j] ^ temp[j];
+            temp[j] = ciphertext[i + j]; // Update temp with current ciphertext
+        }
+    }
+}
+
+// Print a block for debugging
+void printBlock(uint8_t *block, int size) {
+    for (int i = 0; i < size; i++) {
+        printf("%02x ", block[i]);
+    }
+    printf("\n");
+}

@@ -1,0 +1,69 @@
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+
+// Simulated block cipher encryption (simple XOR for demonstration)
+void blockCipherEncrypt(char *input, char *key, char *output, int blockSize) {
+    for (int i = 0; i < blockSize; i++) {
+        output[i] = input[i] ^ key[i];
+    }
+}
+
+// XOR function for two blocks
+void xorBlocks(char *block1, char *block2, char *result, int blockSize) {
+    for (int i = 0; i < blockSize; i++) {
+        result[i] = block1[i] ^ block2[i];
+    }
+}
+
+int main() {
+    int blockSize = 16; // Block size in bytes
+    char key[16] = "example_secret_k"; // Example key (16 bytes)
+    char X[16] = "example_message";    // One-block message X (16 bytes)
+    char T[16];                        // MAC of message X
+    char Y[16];                        // Second block for exploit
+    char M[32];                        // Two-block message
+    char T_prime[16];                  // MAC of two-block message M
+
+    // Step 1: Compute MAC of X
+    blockCipherEncrypt(X, key, T, blockSize);
+    printf("MAC of one-block message X: ");
+    for (int i = 0; i < blockSize; i++) {
+        printf("%02x", (unsigned char)T[i]);
+    }
+    printf("\n");
+
+    // Step 2: Adversary computes Y = X ⊕ T
+    xorBlocks(X, T, Y, blockSize);
+    printf("Second block Y (X ⊕ T): ");
+    for (int i = 0; i < blockSize; i++) {
+        printf("%02x", (unsigned char)Y[i]);
+    }
+    printf("\n");
+
+    // Step 3: Construct two-block message M = X || Y
+    memcpy(M, X, blockSize);
+    memcpy(M + blockSize, Y, blockSize);
+
+    // Step 4: Compute MAC of M (simulating CBC-MAC)
+    char intermediate[16];
+    xorBlocks(X, key, intermediate, blockSize); // First block XOR key
+    blockCipherEncrypt(intermediate, key, T_prime, blockSize);
+    xorBlocks(T_prime, Y, intermediate, blockSize); // XOR with Y
+    blockCipherEncrypt(intermediate, key, T_prime, blockSize);
+
+    printf("MAC of two-block message M: ");
+    for (int i = 0; i < blockSize; i++) {
+        printf("%02x", (unsigned char)T_prime[i]);
+    }
+    printf("\n");
+
+    // Check if MAC of M matches MAC of X
+    if (memcmp(T, T_prime, blockSize) == 0) {
+        printf("The MACs match! CBC-MAC vulnerability exploited.\n");
+    } else {
+        printf("The MACs do not match.\n");
+    }
+
+    return 0;
+}

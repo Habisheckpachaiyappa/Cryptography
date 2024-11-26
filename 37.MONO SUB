@@ -1,0 +1,99 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+// English letter frequency in descending order
+const char ENGLISH_FREQUENCY[] = "ETAOINSHRDLCUMWFGYPBVKJXQZ";
+
+// Function prototypes
+void calculateFrequency(const char *ciphertext, int *frequency);
+void generateMappings(char *mapping, const int *cipherFrequency);
+void decryptWithMapping(const char *ciphertext, const char *mapping, char *plaintext);
+void generateTopPlaintexts(const char *ciphertext, char plaintexts[][256], int top);
+
+int main() {
+    char ciphertext[256];
+    char plaintexts[10][256]; // Store the top 10 plaintexts
+    int top = 10;
+
+    // Input ciphertext
+    printf("Enter the ciphertext: ");
+    fgets(ciphertext, sizeof(ciphertext), stdin);
+    ciphertext[strcspn(ciphertext, "\n")] = '\0'; // Remove newline character
+
+    // Generate and display top plaintexts
+    generateTopPlaintexts(ciphertext, plaintexts, top);
+
+    printf("\nTop %d possible plaintexts:\n", top);
+    for (int i = 0; i < top; i++) {
+        printf("%d: %s\n", i + 1, plaintexts[i]);
+    }
+
+    return 0;
+}
+
+// Function to calculate letter frequency in the ciphertext
+void calculateFrequency(const char *ciphertext, int *frequency) {
+    for (int i = 0; i < 26; i++) frequency[i] = 0; // Initialize frequency array
+
+    for (int i = 0; ciphertext[i] != '\0'; i++) {
+        if (ciphertext[i] >= 'A' && ciphertext[i] <= 'Z') {
+            frequency[ciphertext[i] - 'A']++;
+        } else if (ciphertext[i] >= 'a' && ciphertext[i] <= 'z') {
+            frequency[ciphertext[i] - 'a']++;
+        }
+    }
+}
+
+// Function to generate a mapping of ciphertext letters to English letters
+void generateMappings(char *mapping, const int *cipherFrequency) {
+    int cipherOrder[26];
+    for (int i = 0; i < 26; i++) cipherOrder[i] = i;
+
+    // Sort letters in descending order of frequency
+    for (int i = 0; i < 25; i++) {
+        for (int j = i + 1; j < 26; j++) {
+            if (cipherFrequency[cipherOrder[i]] < cipherFrequency[cipherOrder[j]]) {
+                int temp = cipherOrder[i];
+                cipherOrder[i] = cipherOrder[j];
+                cipherOrder[j] = temp;
+            }
+        }
+    }
+
+    // Generate the mapping based on English frequency
+    for (int i = 0; i < 26; i++) {
+        mapping[cipherOrder[i]] = ENGLISH_FREQUENCY[i];
+    }
+}
+
+// Function to decrypt using a specific letter mapping
+void decryptWithMapping(const char *ciphertext, const char *mapping, char *plaintext) {
+    for (int i = 0; ciphertext[i] != '\0'; i++) {
+        if (ciphertext[i] >= 'A' && ciphertext[i] <= 'Z') {
+            plaintext[i] = mapping[ciphertext[i] - 'A'];
+        } else if (ciphertext[i] >= 'a' && ciphertext[i] <= 'z') {
+            plaintext[i] = mapping[ciphertext[i] - 'a'] + ('a' - 'A');
+        } else {
+            plaintext[i] = ciphertext[i]; // Non-alphabetic characters remain unchanged
+        }
+    }
+    plaintext[strlen(ciphertext)] = '\0';
+}
+
+// Generate top plaintexts based on likely letter mappings
+void generateTopPlaintexts(const char *ciphertext, char plaintexts[][256], int top) {
+    int cipherFrequency[26];
+    char mapping[26];
+    char decrypted[256];
+
+    calculateFrequency(ciphertext, cipherFrequency);
+    generateMappings(mapping, cipherFrequency);
+
+    // Generate top plaintexts by permuting the most frequent letters
+    for (int i = 0; i < top && i < 26; i++) {
+        mapping[i] = ENGLISH_FREQUENCY[i];
+        decryptWithMapping(ciphertext, mapping, decrypted);
+        strcpy(plaintexts[i], decrypted);
+    }
+}

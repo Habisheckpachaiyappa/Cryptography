@@ -1,0 +1,73 @@
+#include <stdio.h>
+
+// Function to compute GCD using Euclid's algorithm
+int gcd(int a, int b) {
+    while (b != 0) {
+        int temp = b;
+        b = a % b;
+        a = temp;
+    }
+    return a;
+}
+
+// Extended Euclidean Algorithm to find modular inverse
+int extendedGCD(int a, int b, int *x, int *y) {
+    if (b == 0) {
+        *x = 1;
+        *y = 0;
+        return a;
+    }
+    int x1, y1;
+    int gcd = extendedGCD(b, a % b, &x1, &y1);
+    *x = y1;
+    *y = x1 - (a / b) * y1;
+    return gcd;
+}
+
+// Function to find modular inverse of e modulo phi
+int modInverse(int e, int phi) {
+    int x, y;
+    int gcd = extendedGCD(e, phi, &x, &y);
+    if (gcd != 1) {
+        printf("No modular inverse exists.\n");
+        return -1;
+    }
+    return (x % phi + phi) % phi;
+}
+
+int main() {
+    // Public key values
+    int n = 3599;  // n = p * q
+    int e = 31;    // Public exponent
+
+    // Assumed plaintext block that shares a common factor with n
+    int m = 59;    // Known plaintext block
+
+    // Step 1: Find gcd of m and n to determine a factor of n
+    int p = gcd(m, n);
+    if (p == 1 || p == n) {
+        printf("No useful factor found.\n");
+        return 1;
+    }
+
+    // Step 2: Calculate the other factor q
+    int q = n / p;
+    printf("Factors of n: p = %d, q = %d\n", p, q);
+
+    // Step 3: Compute φ(n)
+    int phi = (p - 1) * (q - 1);
+    printf("Totient φ(n) = %d\n", phi);
+
+    // Step 4: Compute private key d
+    int d = modInverse(e, phi);
+    if (d == -1) {
+        printf("Error computing private key.\n");
+        return 1;
+    }
+
+    // Step 5: Display results
+    printf("Public Key: (e = %d, n = %d)\n", e, n);
+    printf("Private Key: d = %d\n", d);
+
+    return 0;
+}

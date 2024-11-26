@@ -1,0 +1,45 @@
+#include <stdio.h>
+#include <math.h>
+
+// Function to perform modular exponentiation
+int modExp(int base, int exp, int mod) {
+    int result = 1;
+    base = base % mod;
+    while (exp > 0) {
+        if (exp % 2 == 1) {
+            result = (result * base) % mod;
+        }
+        exp = exp >> 1;
+        base = (base * base) % mod;
+    }
+    return result;
+}
+
+// Function to attack RSA encryption
+void rsaAttack(int e, int n, int c) {
+    printf("Performing brute force attack...\n");
+
+    for (int m = 0; m < 26; m++) {
+        // Encrypt each possible plaintext
+        int encrypted = modExp(m, e, n);
+
+        if (encrypted == c) {
+            printf("Decrypted plaintext: %c (m = %d)\n", 'A' + m, m);
+            return;
+        }
+    }
+
+    printf("Unable to decrypt ciphertext.\n");
+}
+
+int main() {
+    // RSA public key (e, n) and ciphertext
+    int e = 31;      // Public exponent
+    int n = 3599;    // Modulus
+    int c = 2021;    // Ciphertext for an alphabetic character
+
+    // Brute-force attack on the ciphertext
+    rsaAttack(e, n, c);
+
+    return 0;
+}

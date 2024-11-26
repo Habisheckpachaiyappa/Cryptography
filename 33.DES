@@ -1,0 +1,183 @@
+#include <stdio.h>
+#include <stdint.h>
+#include <string.h>
+
+// Permutation and S-Box tables (simplified for clarity)
+int IP[64] = { /* Initial Permutation Table */ };
+int FP[64] = { /* Final Permutation Table */ };
+int E[48] = { /* Expansion table */ };
+int P[32] = { /* Permutation function */ };
+int S[8][4][16] = { /* S-Box */ };
+
+// Example key scheduling permutations
+int PC1[56] = { /* Permutation Choice 1 */ };
+int PC2[48] = { /* Permutation Choice 2 */ };
+int SHIFTS[16] = { /* Key shift schedule */ };
+
+// Function prototypes
+void initialPermutation(uint8_t *block, uint8_t *output);
+void finalPermutation(uint8_t *block, uint8_t *output);
+void feistel(uint32_t *L, uint32_t *R, uint8_t subkeys[16][6]);
+void keySchedule(uint8_t *key, uint8_t subkeys[16][6]);
+uint32_t fFunction(uint32_t R, uint8_t *subkey);
+void encryptBlock(uint8_t *plaintext, uint8_t *ciphertext, uint8_t *key);
+void decryptBlock(uint8_t *ciphertext, uint8_t *plaintext, uint8_t *key);
+
+// Utility functions
+void printBlock(uint8_t *block, int size);
+
+int main() {
+    // Example 64-bit plaintext and key
+    uint8_t plaintext[8] = {0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef};
+    uint8_t ciphertext[8];
+    uint8_t decryptedText[8];
+    uint8_t key[8] = {0x13, 0x34, 0x57, 0x79, 0x9b, 0xbc, 0xdf, 0xf1};
+
+    printf("Original plaintext: ");
+    printBlock(plaintext, 8);
+
+    // Encrypt the plaintext
+    encryptBlock(plaintext, ciphertext, key);
+    printf("Ciphertext: ");
+    printBlock(ciphertext, 8);
+
+    // Decrypt the ciphertext
+    decryptBlock(ciphertext, decryptedText, key);
+    printf("Decrypted plaintext: ");
+    printBlock(decryptedText, 8);
+
+    return 0;
+}
+
+// Print block for debugging
+void printBlock(uint8_t *block, int size) {
+    for (int i = 0; i < size; i++) {
+        printf("%02x ", block[i]);
+    }
+    printf("\n");
+}
+
+// Initial Permutation
+void initialPermutation(uint8_t *block, uint8_t *output) {
+    for (int i = 0; i < 64; i++) {
+        int bit = (block[IP[i] / 8] >> (7 - (IP[i] % 8))) & 1;
+        output[i / 8] |= bit << (7 - (i % 8));
+    }
+}
+
+// Final Permutation
+void finalPermutation(uint8_t *block, uint8_t *output) {
+    for (int i = 0; i < 64; i++) {
+        int bit = (block[FP[i] / 8] >> (7 - (FP[i] % 8))) & 1;
+        output[i / 8] |= bit << (7 - (i % 8));
+    }
+}
+
+// Feistel function
+uint32_t fFunction(uint32_t R, uint8_t *subkey) {
+    uint8_t expandedR[6] = {0};
+    uint8_t substitutedR[4] = {0};
+
+    // Expansion
+    for (int i = 0; i < 48; i++) {
+        int bit = (R >> (31 - E[i])) & 1;
+        expandedR[i / 8] |= bit << (7 - (i % 8));
+    }
+
+    // XOR with subkey
+    for (int i = 0; i < 6; i++) {
+        expandedR[i] ^= subkey[i];
+    }
+
+    // S-Box substitution
+    for (int i = 0; i < 8; i++) {
+        int row = ((expandedR[i / 2] >> (7 - (i * 6) % 8)) & 0x20) |
+                  ((expandedR[i / 2] >> (7 - (i * 6 + 5) % 8)) & 0x01);
+        int col = (expandedR[i / 2] >> (7 - (i * 6 + 1) % 8)) & 0x0F;
+        substitutedR[i / 2] |= S[i][row][col] << (4 * (1 - (i % 2)));
+    }
+
+    // Permutation P
+    uint32_t output = 0;
+    for (int i = 0; i < 32; i++) {
+        int bit = (substitutedR[P[i] / 8] >> (7 - (P[i] % 8))) & 1;
+        output |= bit << (31 - i);
+    }
+
+    return output;
+}
+
+// Key Schedule
+void keySchedule(uint8_t *key, uint8_t subkeys[16][6]) {
+    uint8_t permutedKey[7] = {0};
+    uint32_t C = 0, D = 0;
+
+    // Initial Permutation PC1
+    for (int i = 0; i < 56; i++) {
+        int bit = (key[PC1[i] / 8] >> (7 - (PC1[i] % 8))) & 1;
+        if (i < 28) {
+            C |= bit << (27 - i);
+        } else {
+            D |= bit << (55 - i);
+        }
+    }
+
+    // Subkey generation
+    for (int round = 0; round < 16; round++) {
+        // Left shift
+        C = ((C << SHIFTS[round]) | (C >> (28 - SHIFTS[round]))) & 0x0FFFFFFF;
+        D = ((D << SHIFTS[round]) | (D >> (28 - SHIFTS[round]))) & 0x0FFFFFFF;
+
+        // Permutation PC2
+        for (int i = 0; i < 48; i++) {
+            int bit = ((i < 24 ? C : D) >> (27 - PC2[i])) & 1;
+            subkeys[round][i / 8] |= bit << (7 - (i % 8));
+        }
+    }
+}
+
+// Feistel network
+void feistel(uint32_t *L, uint32_t *R, uint8_t subkeys[16][6]) {
+    for (int round = 0; round < 16; round++) {
+        uint32_t temp = *R;
+        *R = *L ^ fFunction(*R, subkeys[round]);
+        *L = temp;
+    }
+}
+
+// Encrypt 64-bit block
+void encryptBlock(uint8_t *plaintext, uint8_t *ciphertext, uint8_t *key) {
+    uint8_t permutedBlock[8] = {0};
+    uint8_t subkeys[16][6] = {0};
+    uint32_t L = 0, R = 0;
+
+    // Initial Permutation
+    initialPermutation(plaintext, permutedBlock);
+    L = (permutedBlock[0] << 24) | (permutedBlock[1] << 16) |
+        (permutedBlock[2] << 8) | permutedBlock[3];
+    R = (permutedBlock[4] << 24) | (permutedBlock[5] << 16) |
+        (permutedBlock[6] << 8) | permutedBlock[7];
+
+    // Key schedule
+    keySchedule(key, subkeys);
+
+    // Feistel rounds
+    feistel(&L, &R, subkeys);
+
+    // Final Permutation
+    uint8_t preoutput[8] = {R >> 24, R >> 16, R >> 8, R, L >> 24, L >> 16, L >> 8, L};
+    finalPermutation(preoutput, ciphertext);
+}
+
+// Decrypt 64-bit block
+void decryptBlock(uint8_t *ciphertext, uint8_t *plaintext, uint8_t *key) {
+    uint8_t permutedBlock[8] = {0};
+    uint8_t subkeys[16][6] = {0};
+    uint32_t L = 0, R = 0;
+
+    // Initial Permutation
+    initialPermutation(ciphertext, permutedBlock);
+    L = (permutedBlock[0] << 24) | (permutedBlock[1] << 16) |
+        (permutedBlock[2] << 8) | permutedBlock[3];
+    R = (permutedBlock[4] << 24) | (permutedBlock[5] << 16) |
+        (permutedBlock[6] << 8

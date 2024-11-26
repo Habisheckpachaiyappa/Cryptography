@@ -1,0 +1,92 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <time.h>
+
+// Function prototypes
+void generateKeyStream(int *keyStream, int length);
+void encrypt(const char *plaintext, char *ciphertext, const int *keyStream);
+void decrypt(const char *ciphertext, char *plaintext, const int *keyStream);
+void printKeyStream(const int *keyStream, int length);
+
+int main() {
+    char plaintext[256];
+    char ciphertext[256];
+    char decrypted[256];
+    int keyStream[256];
+
+    // Input plaintext
+    printf("Enter the plaintext: ");
+    fgets(plaintext, sizeof(plaintext), stdin);
+    plaintext[strcspn(plaintext, "\n")] = '\0'; // Remove newline character
+
+    int length = strlen(plaintext);
+
+    // Generate key stream
+    srand(time(NULL));
+    generateKeyStream(keyStream, length);
+
+    // Encrypt the plaintext
+    encrypt(plaintext, ciphertext, keyStream);
+
+    // Decrypt the ciphertext
+    decrypt(ciphertext, decrypted, keyStream);
+
+    // Output results
+    printf("\nPlaintext: %s", plaintext);
+    printf("\nKey Stream: ");
+    printKeyStream(keyStream, length);
+    printf("\nCiphertext: %s", ciphertext);
+    printf("\nDecrypted Text: %s\n", decrypted);
+
+    return 0;
+}
+
+// Function to generate a random key stream
+void generateKeyStream(int *keyStream, int length) {
+    for (int i = 0; i < length; i++) {
+        keyStream[i] = rand() % 26; // Random number between 0 and 25
+    }
+}
+
+// Function to encrypt plaintext
+void encrypt(const char *plaintext, char *ciphertext, const int *keyStream) {
+    for (int i = 0; plaintext[i] != '\0'; i++) {
+        if (plaintext[i] >= 'A' && plaintext[i] <= 'Z') {
+            // Uppercase letters
+            ciphertext[i] = ((plaintext[i] - 'A' + keyStream[i]) % 26) + 'A';
+        } else if (plaintext[i] >= 'a' && plaintext[i] <= 'z') {
+            // Lowercase letters
+            ciphertext[i] = ((plaintext[i] - 'a' + keyStream[i]) % 26) + 'a';
+        } else {
+            // Non-alphabetic characters remain unchanged
+            ciphertext[i] = plaintext[i];
+        }
+    }
+    ciphertext[strlen(plaintext)] = '\0'; // Null-terminate ciphertext
+}
+
+// Function to decrypt ciphertext
+void decrypt(const char *ciphertext, char *plaintext, const int *keyStream) {
+    for (int i = 0; ciphertext[i] != '\0'; i++) {
+        if (ciphertext[i] >= 'A' && ciphertext[i] <= 'Z') {
+            // Uppercase letters
+            plaintext[i] = ((ciphertext[i] - 'A' - keyStream[i] + 26) % 26) + 'A';
+        } else if (ciphertext[i] >= 'a' && ciphertext[i] <= 'z') {
+            // Lowercase letters
+            plaintext[i] = ((ciphertext[i] - 'a' - keyStream[i] + 26) % 26) + 'a';
+        } else {
+            // Non-alphabetic characters remain unchanged
+            plaintext[i] = ciphertext[i];
+        }
+    }
+    plaintext[strlen(ciphertext)] = '\0'; // Null-terminate plaintext
+}
+
+// Function to print the key stream
+void printKeyStream(const int *keyStream, int length) {
+    for (int i = 0; i < length; i++) {
+        printf("%d ", keyStream[i]);
+    }
+    printf("\n");
+}

@@ -1,0 +1,74 @@
+#include <stdio.h>
+#include <stdint.h>
+#include <string.h>
+
+void generate_subkeys(uint8_t key, uint8_t *subkey1, uint8_t *subkey2) {
+    // Generate subkeys (assuming simplified key scheduling)
+    *subkey1 = (key >> 2) & 0xF;  // Example subkey generation
+    *subkey2 = (key << 2) & 0xF;  // Example subkey generation
+}
+
+uint8_t feistel(uint8_t half_block, uint8_t subkey) {
+    // Simplified Feistel function (this is a placeholder for demonstration)
+    return (half_block ^ subkey) & 0xF;
+}
+
+void sdes_encrypt(uint8_t *block, uint8_t subkey1, uint8_t subkey2) {
+    // Simplified S-DES encryption (Feistel network example)
+    uint8_t left = block[0], right = block[1];
+    left ^= feistel(right, subkey1);
+    right ^= feistel(left, subkey2);
+    block[0] = left;
+    block[1] = right;
+}
+
+void xor_blocks(uint8_t *block1, uint8_t *block2, uint8_t *output, int size) {
+    for (int i = 0; i < size; i++) {
+        output[i] = block1[i] ^ block2[i];
+    }
+}
+
+void increment_counter(uint8_t *counter, int size) {
+    for (int i = size - 1; i >= 0; i--) {
+        counter[i]++;
+        if (counter[i] != 0) {
+            break;
+        }
+    }
+}
+
+void ctr_encrypt(uint8_t *plaintext, uint8_t *ciphertext, uint8_t *key, uint8_t *counter, int length) {
+    uint8_t block[2];
+    uint8_t subkey1, subkey2;
+    uint8_t keystream_block[2];
+
+    generate_subkeys(*key, &subkey1, &subkey2);
+
+    for (int i = 0; i < length; i += 2) {
+        memcpy(block, counter, 2);
+        sdes_encrypt(block, subkey1, subkey2);
+
+        keystream_block[0] = block[0];
+        keystream_block[1] = block[1];
+
+        xor_blocks(&plaintext[i], keystream_block, &ciphertext[i], 2);
+
+        increment_counter(counter, 2);
+    }
+}
+
+int main() {
+    uint8_t counter[2] = {0x00, 0x00}; // Initial counter value
+    uint8_t plaintext[6] = {0x01, 0x02, 0x04, 0x00, 0x00, 0x00}; // Binary plaintext (example)
+    uint8_t key = 0x1F; // Binary key (example)
+    uint8_t ciphertext[6];
+    ctr_encrypt(plaintext, ciphertext, &key, counter, 6);
+
+    printf("Ciphertext: ");
+    for (int i = 0; i < 6; i++) {
+        printf("%02x ", ciphertext[i]);
+    }
+    printf("\n");
+
+    return 0;
+}

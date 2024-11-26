@@ -1,0 +1,66 @@
+#include <stdio.h>
+
+// Extended Euclidean Algorithm to find modular inverse
+int extendedGCD(int a, int b, int *x, int *y) {
+    if (b == 0) {
+        *x = 1;
+        *y = 0;
+        return a;
+    }
+    int x1, y1;
+    int gcd = extendedGCD(b, a % b, &x1, &y1);
+    *x = y1;
+    *y = x1 - (a / b) * y1;
+    return gcd;
+}
+
+// Function to calculate phi(n) given e and d
+int computePhi(int e, int d) {
+    int k = 1;
+    while ((1 + k * e) % d != 0) {
+        k++;
+    }
+    return (1 + k * e) / d;
+}
+
+// Function to compute p and q from n and phi(n)
+void computeFactors(int n, int phi, int *p, int *q) {
+    for (int i = 2; i <= n / 2; i++) {
+        if (n % i == 0) {
+            int other = n / i;
+            if ((i - 1) * (other - 1) == phi) {
+                *p = i;
+                *q = other;
+                return;
+            }
+        }
+    }
+    *p = *q = -1;  // Factors not found
+}
+
+int main() {
+    // Given values
+    int n = 3599;  // Public modulus
+    int e = 31;    // Public exponent
+    int d = 1783;  // Leaked private key
+
+    // Step 1: Compute φ(n)
+    int phi = computePhi(e, d);
+    printf("Computed φ(n) = %d\n", phi);
+
+    // Step 2: Compute p and q from n and φ(n)
+    int p, q;
+    computeFactors(n, phi, &p, &q);
+
+    if (p == -1 || q == -1) {
+        printf("Error: Unable to compute factors of n.\n");
+        return 1;
+    }
+
+    printf("Factors of n: p = %d, q = %d\n", p, q);
+
+    // Step 3: Demonstrate insecurity of reusing n
+    printf("Reusing the same n is insecure as p and q are now known.\n");
+
+    return 0;
+}

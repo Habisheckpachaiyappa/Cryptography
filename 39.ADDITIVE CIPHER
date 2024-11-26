@@ -1,0 +1,85 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <ctype.h>
+
+#define ALPHABET_SIZE 26
+#define MAX_TEXT_LENGTH 1000
+
+// Function to calculate frequency of letters in the ciphertext
+void calculateFrequency(const char *ciphertext, int frequency[ALPHABET_SIZE]) {
+    int i;
+    for (i = 0; ciphertext[i] != '\0'; i++) {
+        char c = tolower(ciphertext[i]);
+        if (c >= 'a' && c <= 'z') {
+            frequency[c - 'a']++;
+        }
+    }
+}
+
+// Function to shift a string by a given shift value (for decryption)
+void shiftText(char *text, int shift) {
+    int i;
+    for (i = 0; text[i] != '\0'; i++) {
+        if (isalpha(text[i])) {
+            char base = isupper(text[i]) ? 'A' : 'a';
+            text[i] = (text[i] - base + shift) % ALPHABET_SIZE + base;
+        }
+    }
+}
+
+// Function to display the frequency of each letter
+void displayFrequency(int frequency[ALPHABET_SIZE]) {
+    printf("Letter Frequency:\n");
+    for (int i = 0; i < ALPHABET_SIZE; i++) {
+        printf("%c: %d\n", 'A' + i, frequency[i]);
+    }
+}
+
+// Function to perform the frequency attack on an additive cipher
+void frequencyAttack(const char *ciphertext) {
+    int frequency[ALPHABET_SIZE] = {0};
+    int i;
+
+    // Step 1: Calculate the letter frequency in the ciphertext
+    calculateFrequency(ciphertext, frequency);
+
+    // Step 2: Display the frequency of letters
+    displayFrequency(frequency);
+
+    // Step 3: Determine possible shift values based on letter frequency
+    // English letter 'E' is usually the most frequent letter
+    int mostFrequentLetter = 0;
+    for (i = 1; i < ALPHABET_SIZE; i++) {
+        if (frequency[i] > frequency[mostFrequentLetter]) {
+            mostFrequentLetter = i;
+        }
+    }
+
+    // Step 4: Try all shifts and display the top 10 possible plaintexts
+    printf("\nTop 10 possible plaintexts based on frequency analysis:\n");
+    for (i = 0; i < 10 && i < ALPHABET_SIZE; i++) {
+        char decryptedText[MAX_TEXT_LENGTH];
+        strcpy(decryptedText, ciphertext);
+
+        int shift = (mostFrequentLetter - i) % ALPHABET_SIZE;
+        if (shift < 0) shift += ALPHABET_SIZE; // handle negative shifts
+
+        shiftText(decryptedText, shift);
+
+        printf("Shift %d: %s\n", shift, decryptedText);
+    }
+}
+
+int main() {
+    char ciphertext[MAX_TEXT_LENGTH];
+
+    printf("Enter the ciphertext: ");
+    fgets(ciphertext, MAX_TEXT_LENGTH, stdin);
+    ciphertext[strcspn(ciphertext, "\n")] = '\0';  // Remove the newline character
+
+    // Perform the frequency attack
+    frequencyAttack(ciphertext);
+
+    return 0;
+}

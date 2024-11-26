@@ -1,0 +1,77 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <time.h>
+
+// Function to compute modular exponentiation
+long long modExp(long long base, long long exp, long long mod) {
+    long long result = 1;
+    base = base % mod;
+
+    while (exp > 0) {
+        if (exp % 2 == 1) {
+            result = (result * base) % mod;
+        }
+        exp = exp >> 1;
+        base = (base * base) % mod;
+    }
+
+    return result;
+}
+
+// DSA Signing (Simplified Example)
+void DSA_Sign(long long message, long long p, long long q, long long g, long long x, long long *r, long long *s) {
+    long long k, k_inv;
+
+    // Generate random nonce k
+    k = rand() % (q - 1) + 1; // Random k in the range [1, q-1]
+
+    // Compute r = (g^k mod p) mod q
+    *r = modExp(g, k, p) % q;
+
+    // Compute k^(-1) mod q (using brute-force for simplicity)
+    for (k_inv = 1; k_inv < q; k_inv++) {
+        if ((k * k_inv) % q == 1) break;
+    }
+
+    // Compute s = k^(-1) * (H(message) + x * r) mod q
+    *s = (k_inv * (message + x * (*r))) % q;
+}
+
+// RSA Signing (Simplified Example)
+long long RSA_Sign(long long message, long long d, long long n) {
+    return modExp(message, d, n); // Signature = message^d mod n
+}
+
+int main() {
+    srand(time(0)); // Seed random number generator
+
+    // Parameters for DSA
+    long long p = 23, q = 11, g = 2, x = 5; // Public and private keys
+    long long message = 7;                  // Message to sign
+    long long r1, s1, r2, s2;               // DSA signatures
+
+    // Sign the message twice using DSA
+    DSA_Sign(message, p, q, g, x, &r1, &s1);
+    DSA_Sign(message, p, q, g, x, &r2, &s2);
+
+    printf("DSA Signatures:\n");
+    printf("First Signature: r = %lld, s = %lld\n", r1, s1);
+    printf("Second Signature: r = %lld, s = %lld\n", r2, s2);
+    printf("Signatures differ due to randomness in DSA.\n\n");
+
+    // Parameters for RSA
+    long long n = 33, d = 7; // Public modulus and private key
+    long long rsaSignature1, rsaSignature2;
+
+    // Sign the message twice using RSA
+    rsaSignature1 = RSA_Sign(message, d, n);
+    rsaSignature2 = RSA_Sign(message, d, n);
+
+    printf("RSA Signatures:\n");
+    printf("First Signature: %lld\n", rsaSignature1);
+    printf("Second Signature: %lld\n", rsaSignature2);
+    printf("Signatures are identical since RSA lacks randomness.\n");
+
+    return 0;
+}

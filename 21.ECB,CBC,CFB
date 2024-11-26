@@ -1,0 +1,100 @@
+#include <stdio.h>
+#include <string.h>
+#include <openssl/aes.h>
+#include <openssl/rand.h>
+
+#define BLOCK_SIZE 16
+
+void handleErrors() {
+    fprintf(stderr, "An error occurred\n");
+    exit(1);
+}
+
+void print_data(const char *title, const void* data, int len) {
+    printf("%s : ", title);
+    const unsigned char * p = (const unsigned char*)data;
+    for (int i=0; i<len; i++)
+        printf("%02X ", *p++);
+    printf("\n");
+}
+
+void pad(unsigned char *block, int block_size, int data_len) {
+    block[data_len] = 0x80;
+    for (int i = data_len + 1; i < block_size; i++) {
+        block[i] = 0x00;
+    }
+}
+
+void ecb_encrypt(const unsigned char *plaintext, unsigned char *ciphertext, const unsigned char *key) {
+    AES_KEY encryptKey;
+    AES_set_encrypt_key(key, 128, &encryptKey);
+
+    int num_blocks = strlen((const char *)plaintext) / BLOCK_SIZE;
+    for (int i = 0; i < num_blocks; i++) {
+        AES_ecb_encrypt(plaintext + (i * BLOCK_SIZE), ciphertext + (i * BLOCK_SIZE), &encryptKey, AES_ENCRYPT);
+    }
+}
+
+void cbc_encrypt(const unsigned char *plaintext, unsigned char *ciphertext, const unsigned char *key, unsigned char *iv) {
+    AES_KEY encryptKey;
+    AES_set_encrypt_key(key, 128, &encryptKey);
+
+    int num_blocks = strlen((const char *)plaintext) / BLOCK_SIZE;
+    unsigned char block[BLOCK_SIZE];
+
+    for (int i = 0; i < num_blocks; i++) {
+        for (int j = 0; j < BLOCK_SIZE; j++) {
+            block[j] = plaintext[i * BLOCK_SIZE + j] ^ iv[j];
+        }
+        AES_encrypt(block, ciphertext + (i * BLOCK_SIZE), &encryptKey);
+        memcpy(iv, ciphertext + (i * BLOCK_SIZE), BLOCK_SIZE);
+    }
+}
+
+void cfb_encrypt(const unsigned char *plaintext, unsigned char *ciphertext, const unsigned char *key, unsigned char *iv) {
+    AES_KEY encryptKey;
+    AES_set_encrypt_key(key, 128, &encryptKey);
+
+    int num_blocks = strlen((const char *)plaintext) / BLOCK_SIZE;
+    unsigned char block[BLOCK_SIZE], temp[BLOCK_SIZE];
+
+    for (int i = 0; i < num_blocks; i++) {
+        AES_encrypt(iv, block, &encryptKey);
+        for (int j = 0; j < BLOCK_SIZE; j++) {
+            ciphertext[i * BLOCK_SIZE + j] = plaintext[i * BLOCK_SIZE + j] ^ block[j];
+        }
+        memcpy(iv, ciphertext + (i * BLOCK_SIZE), BLOCK_SIZE);
+    }
+}
+
+int main() {
+    unsigned char key[BLOCK_SIZE] = "thiskeyisverybad";
+    unsigned char iv[BLOCK_SIZE];
+    unsigned char plaintext[] = "This is a test message for encryption in different modes.";
+    unsigned char ciphertext[128] = {0};
+    unsigned char padded_plaintext[BLOCK_SIZE * ((sizeof(plaintext) + BLOCK_SIZE - 1) / BLOCK_SIZE)] = {0};
+
+    RAND_bytes(iv, BLOCK_SIZE);
+
+    strcpy((char *)padded_plaintext, (const char *)plaintext);
+    pad(padded_plaintext, sizeof(padded_plaintext), strlen((const char *)plaintext));
+
+    printf("Original Plaintext: %s\n", plaintext);
+
+    // ECB Mode
+    ecb_encrypt(padded_plaintext, ciphertext, key);
+    print_data("ECB Encrypted", ciphertext, sizeof(padded_plaintext));
+
+    // CBC Mode
+    cbc_encrypt(padded_plaintext, ciphertext, key, iv);
+    print_data("CBC Encrypted", ciphertext, sizeof(padded_plaintext));
+
+    // Reset IV for CFB
+    RAND_bytes(iv, BLOCK_SIZE);
+
+    // CFB Mode
+    cfb_encrypt(padded_plaintext, ciphertext, key, iv);
+    print_data("CFB Encrypted", ciphertext, sizeof(padded_plaintext));
+
+    return 0;
+}

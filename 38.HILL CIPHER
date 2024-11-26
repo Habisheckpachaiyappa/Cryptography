@@ -1,0 +1,122 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+#define MATRIX_SIZE 3 // Assume a 3x3 Hill cipher key matrix
+
+// Function prototypes
+void matrixMultiply(int result[MATRIX_SIZE][MATRIX_SIZE], int mat1[MATRIX_SIZE][MATRIX_SIZE], int mat2[MATRIX_SIZE][MATRIX_SIZE], int mod);
+int determinant(int matrix[MATRIX_SIZE][MATRIX_SIZE], int mod);
+void inverseMatrix(int matrix[MATRIX_SIZE][MATRIX_SIZE], int inverse[MATRIX_SIZE][MATRIX_SIZE], int mod);
+void printMatrix(int matrix[MATRIX_SIZE][MATRIX_SIZE]);
+
+int main() {
+    int plaintextMatrix[MATRIX_SIZE][MATRIX_SIZE] = {
+        {19, 0, 12}, // Example plaintext blocks (numerical representation)
+        {7, 4, 11},
+        {18, 20, 1}
+    };
+
+    int ciphertextMatrix[MATRIX_SIZE][MATRIX_SIZE] = {
+        {17, 4, 19}, // Corresponding ciphertext blocks
+        {2, 11, 8},
+        {1, 22, 3}
+    };
+
+    int keyMatrix[MATRIX_SIZE][MATRIX_SIZE];
+    int plaintextInverse[MATRIX_SIZE][MATRIX_SIZE];
+
+    printf("Known Plaintext Matrix:\n");
+    printMatrix(plaintextMatrix);
+
+    printf("\nCorresponding Ciphertext Matrix:\n");
+    printMatrix(ciphertextMatrix);
+
+    // Find the inverse of the plaintext matrix mod 26
+    inverseMatrix(plaintextMatrix, plaintextInverse, 26);
+
+    printf("\nInverse of Plaintext Matrix Mod 26:\n");
+    printMatrix(plaintextInverse);
+
+    // Calculate the key matrix using Ciphertext = Key * Plaintext
+    // Therefore, Key = Ciphertext * Inverse(Plaintext) mod 26
+    matrixMultiply(keyMatrix, ciphertextMatrix, plaintextInverse, 26);
+
+    printf("\nDerived Key Matrix Mod 26:\n");
+    printMatrix(keyMatrix);
+
+    return 0;
+}
+
+// Function to multiply two matrices mod a given value
+void matrixMultiply(int result[MATRIX_SIZE][MATRIX_SIZE], int mat1[MATRIX_SIZE][MATRIX_SIZE], int mat2[MATRIX_SIZE][MATRIX_SIZE], int mod) {
+    for (int i = 0; i < MATRIX_SIZE; i++) {
+        for (int j = 0; j < MATRIX_SIZE; j++) {
+            result[i][j] = 0;
+            for (int k = 0; k < MATRIX_SIZE; k++) {
+                result[i][j] += mat1[i][k] * mat2[k][j];
+            }
+            result[i][j] %= mod;
+        }
+    }
+}
+
+// Function to calculate the determinant of a matrix mod a given value
+int determinant(int matrix[MATRIX_SIZE][MATRIX_SIZE], int mod) {
+    int det = matrix[0][0] * (matrix[1][1] * matrix[2][2] - matrix[1][2] * matrix[2][1])
+            - matrix[0][1] * (matrix[1][0] * matrix[2][2] - matrix[1][2] * matrix[2][0])
+            + matrix[0][2] * (matrix[1][0] * matrix[2][1] - matrix[1][1] * matrix[2][0]);
+    return (det % mod + mod) % mod; // Ensure positive mod
+}
+
+// Function to find the modular inverse of an integer mod m
+int modularInverse(int a, int m) {
+    a %= m;
+    for (int x = 1; x < m; x++) {
+        if ((a * x) % m == 1) {
+            return x;
+        }
+    }
+    return -1; // No inverse exists
+}
+
+// Function to find the inverse of a matrix mod a given value
+void inverseMatrix(int matrix[MATRIX_SIZE][MATRIX_SIZE], int inverse[MATRIX_SIZE][MATRIX_SIZE], int mod) {
+    int det = determinant(matrix, mod);
+    int detInverse = modularInverse(det, mod);
+
+    if (detInverse == -1) {
+        printf("Error: Matrix is not invertible mod %d.\n", mod);
+        exit(1);
+    }
+
+    // Calculate cofactor matrix and adjugate it
+    int temp[MATRIX_SIZE][MATRIX_SIZE];
+    temp[0][0] = (matrix[1][1] * matrix[2][2] - matrix[1][2] * matrix[2][1]) % mod;
+    temp[0][1] = -(matrix[1][0] * matrix[2][2] - matrix[1][2] * matrix[2][0]) % mod;
+    temp[0][2] = (matrix[1][0] * matrix[2][1] - matrix[1][1] * matrix[2][0]) % mod;
+    temp[1][0] = -(matrix[0][1] * matrix[2][2] - matrix[0][2] * matrix[2][1]) % mod;
+    temp[1][1] = (matrix[0][0] * matrix[2][2] - matrix[0][2] * matrix[2][0]) % mod;
+    temp[1][2] = -(matrix[0][0] * matrix[2][1] - matrix[0][1] * matrix[2][0]) % mod;
+    temp[2][0] = (matrix[0][1] * matrix[1][2] - matrix[0][2] * matrix[1][1]) % mod;
+    temp[2][1] = -(matrix[0][0] * matrix[1][2] - matrix[0][2] * matrix[1][0]) % mod;
+    temp[2][2] = (matrix[0][0] * matrix[1][1] - matrix[0][1] * matrix[1][0]) % mod;
+
+    // Transpose the cofactor matrix (adjugate)
+    for (int i = 0; i < MATRIX_SIZE; i++) {
+        for (int j = 0; j < MATRIX_SIZE; j++) {
+            inverse[i][j] = (temp[j][i] * detInverse) % mod;
+            if (inverse[i][j] < 0) inverse[i][j] += mod; // Ensure positive mod
+        }
+    }
+}
+
+// Function to print a matrix
+void printMatrix(int matrix[MATRIX_SIZE][MATRIX_SIZE]) {
+    for (int i = 0; i < MATRIX_SIZE; i++) {
+        for (int j = 0; j < MATRIX_SIZE; j++) {
+            printf("%3d ", matrix[i][j]);
+        }
+        printf("\n");
+    }
+}
